@@ -1,0 +1,5 @@
+assets/*
+*.png
+
+node_modules/
+.claude/
