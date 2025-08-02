@@ -2,6 +2,7 @@ import type { LipSyncFrame } from './types';
 import type { LayersRenderer } from './layer';
 export interface AnimationOptions {
     fps?: number;
+    transitionDuration?: number;
     audioContext?: AudioContext;
     audioBuffer?: AudioBuffer;
     onFrame?: (frameIndex: number, time: number) => void;
@@ -28,7 +29,15 @@ export declare class AnimationController {
     private animationStartTime;
     private isPlaying;
     private currentFrameIndex;
+    private currentTransition;
+    private lastMouthShape;
     constructor(frames: LipSyncFrame[], renderer: LayersRenderer);
+    /**
+     * ease-in-out関数（3次関数）
+     * @param t 0から1の値
+     * @returns イージング後の値（0から1）
+     */
+    private easeInOut;
     /**
      * アニメーションを再生
      */

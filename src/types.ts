@@ -50,7 +50,10 @@ export interface MouthLayerMapping {
 // レンダリングオプション
 export interface RenderOptions {
   layerPaths: string[];
-  mouthShape: MouthShape;
+  mouthShapes?: Array<{
+    shape: MouthShape;
+    alpha: number;  // 0.0 - 1.0
+  }>;
 }
 
 export interface RenderError {

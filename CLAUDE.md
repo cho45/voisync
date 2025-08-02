@@ -115,3 +115,7 @@ const mouthMapping = {
 - **Node.js環境テスト**: ロジックのユニットテスト
 - **ブラウザ環境テスト**: Canvas描画を含む統合テスト（Playwright使用）
 - スナップショットテスト: `test/__screenshots__/` に保存される描画結果の検証
+
+## 注意事項
+
+- `npm run dev` は絶対するな.このコマンドはユーザによって実行される

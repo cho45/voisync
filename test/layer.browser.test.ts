@@ -127,10 +127,10 @@ describe('LayersRenderer (Browser)', () => {
     imageCache.set('/test/mouth_a.png', await createTestImage('#0000FF'));
 
     // レンダリング
-    const result = await renderer.render(canvas, {
-      layerPaths: ['base', '!口/*むふ'],
-      mouthShape: 'closed'
-    });
+    const result = await renderer.renderWithMouthShapes(canvas, ['base', '!口/*むふ'], [{
+      shape: 'closed',
+      alpha: 1.0
+    }]);
     
     expect(result.success).toBe(true);
 
@@ -176,10 +176,10 @@ describe('LayersRenderer (Browser)', () => {
 
 
     // 閉じた口でレンダリング
-    let renderResult = await renderer.render(canvas, {
-      layerPaths: ['base', '!口/*むふ'],
-      mouthShape: 'closed'
-    });
+    let renderResult = await renderer.renderWithMouthShapes(canvas, ['base', '!口/*むふ'], [{
+      shape: 'closed',
+      alpha: 1.0
+    }]);
     expect(renderResult.success).toBe(true);
     
     // 口の中心付近のピクセルを取得（口の位置: left=80, top=100, width=40, height=30）
@@ -202,10 +202,10 @@ describe('LayersRenderer (Browser)', () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // 開いた口でレンダリング
-    renderResult = await renderer.render(canvas, {
-      layerPaths: ['base', '!口/*むふ'],
-      mouthShape: 'a'
-    });
+    renderResult = await renderer.renderWithMouthShapes(canvas, ['base', '!口/*むふ'], [{
+      shape: 'a',
+      alpha: 1.0
+    }]);
     expect(renderResult.success).toBe(true);
     
     // 同じ位置のピクセルを取得
@@ -277,10 +277,10 @@ describe('LayersRenderer (Browser)', () => {
     imageCache.set('/test/base.png', await createBaseImage());
     imageCache.set('/test/transparent.png', await createOpaqueImage());
 
-    const transparentResult = await newRenderer.render(canvas, {
-      layerPaths: ['base', 'transparent'],
-      mouthShape: 'closed'
-    });
+    const transparentResult = await newRenderer.render(canvas, [
+      { layerPath: 'base', alpha: 1.0 },
+      { layerPath: 'transparent', alpha: 1.0 }
+    ]);
     expect(transparentResult.success).toBe(true);
 
     // 半透明が適用されているか確認（厳密なテストは困難なので、描画されたことだけ確認）

@@ -38,7 +38,10 @@ export interface MouthLayerMapping {
 }
 export interface RenderOptions {
     layerPaths: string[];
-    mouthShape: MouthShape;
+    mouthShapes?: Array<{
+        shape: MouthShape;
+        alpha: number;
+    }>;
 }
 export interface RenderError {
     type: 'LAYER_NOT_FOUND' | 'IMAGE_NOT_CACHED' | 'INVALID_MOUTH_SHAPE' | 'CANVAS_ERROR';

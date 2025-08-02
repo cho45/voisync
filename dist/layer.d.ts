@@ -1,21 +1,32 @@
-import type { LayersData, MouthLayerMapping, RenderOptions, RenderResult } from './types';
+import type { LayersData, MouthShape, MouthLayerMapping, RenderResult } from './types';
+interface LayerWithAlpha {
+    layerPath: string;
+    alpha: number;
+}
 export declare class LayersRenderer {
     private imageCache;
     private layersData;
     private mouthMapping;
     constructor(layersData: LayersData, imageCache: Map<string, HTMLImageElement | ImageBitmap>, mouthMapping: MouthLayerMapping);
     /**
+     * 口形状を指定してレイヤーを描画（AnimationControllerから呼ばれる）
+     */
+    renderWithMouthShapes(canvas: HTMLCanvasElement, layerPaths: string[], mouthShapes: Array<{
+        shape: MouthShape;
+        alpha: number;
+    }>): Promise<RenderResult>;
+    /**
      * 指定されたレイヤーをcanvasに描画
      */
-    render(canvas: HTMLCanvasElement, options: RenderOptions): Promise<RenderResult>;
+    render(canvas: HTMLCanvasElement, layers: LayerWithAlpha[]): Promise<RenderResult>;
     /**
      * 必要な画像のファイルパスを取得
      */
     getRequiredImagePaths(layerPaths: string[]): string[];
     /**
-     * 口パーツを置換したレイヤーパスのリストを返す
+     * レイヤーパスを展開し、口レイヤーを複数の口形状に置換
      */
-    private replaceMouthLayer;
+    private expandLayersWithMouthShapes;
     /**
      * キャンバスのサイズを取得
      */
@@ -24,4 +35,5 @@ export declare class LayersRenderer {
         height: number;
     };
 }
+export {};
 //# sourceMappingURL=layer.d.ts.map

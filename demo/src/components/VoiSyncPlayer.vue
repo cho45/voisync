@@ -145,10 +145,10 @@ const drawInitialFrame = async () => {
     console.log('Rendering with baseLayers:', props.baseLayers);
 
     // 初期状態（口を閉じた状態）で描画
-    const result = await renderer.render(canvasRef.value, {
-      layerPaths: props.baseLayers,
-      mouthShape: 'closed'
-    });
+    const result = await renderer.renderWithMouthShapes(canvasRef.value, props.baseLayers, [{
+      shape: 'closed',
+      alpha: 1.0
+    }]);
 
     console.log('Initial render result:', result);
 

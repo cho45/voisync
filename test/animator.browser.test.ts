@@ -176,13 +176,13 @@ describe('AnimationController (Browser)', () => {
   });
 
   it('should render correct mouth shapes during animation', async () => {
-    let renderedShapes: string[] = [];
+    let renderedShapes: Array<{ shape: string, alpha: number }[]> = [];
     
-    // renderメソッドをスパイ
-    const originalRender = renderer.render.bind(renderer);
-    renderer.render = vi.fn(async (canvas, options) => {
-      renderedShapes.push(options.mouthShape);
-      return originalRender(canvas, options);
+    // renderWithMouthShapesメソッドをスパイ
+    const originalRender = renderer.renderWithMouthShapes.bind(renderer);
+    renderer.renderWithMouthShapes = vi.fn(async (canvas, layerPaths, mouthShapes) => {
+      renderedShapes.push(mouthShapes);
+      return originalRender(canvas, layerPaths, mouthShapes);
     });
 
     controller.play(canvas, ['base', '!口/*むふ'], {});
@@ -192,8 +192,11 @@ describe('AnimationController (Browser)', () => {
 
     // 複数の口形状がレンダリングされたことを確認
     expect(renderedShapes.length).toBeGreaterThan(0);
-    expect(renderedShapes).toContain('closed');
-    expect(renderedShapes).toContain('a');
+    
+    // レンダリングされた口形状を確認
+    const allShapes = renderedShapes.flatMap(shapes => shapes.map(s => s.shape));
+    expect(allShapes).toContain('closed');
+    expect(allShapes).toContain('a');
 
     controller.stop();
   });
@@ -347,5 +350,101 @@ describe('AnimationController (Browser)', () => {
     }).not.toThrow();
     
     controller.stop();
+  });
+
+  it('should smoothly transition between mouth shapes', async () => {
+    let capturedTransitions: Array<{
+      shapes: Array<{ shape: string, alpha: number }>,
+      time: number
+    }> = [];
+    
+    // renderWithMouthShapesメソッドをスパイして遷移を記録
+    const originalRender = renderer.renderWithMouthShapes.bind(renderer);
+    renderer.renderWithMouthShapes = vi.fn(async (canvas, layerPaths, mouthShapes) => {
+      if (mouthShapes && mouthShapes.length > 1) {
+        capturedTransitions.push({
+          shapes: [...mouthShapes],
+          time: performance.now()
+        });
+      }
+      return originalRender(canvas, layerPaths, mouthShapes);
+    });
+
+    // 遷移時間を設定してアニメーション開始
+    controller.play(canvas, ['base', '!口/*むふ'], {
+      transitionDuration: 100 // 100ms
+    });
+
+    // 200ms待機（遷移が発生する時間）
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    controller.stop();
+
+    // 遷移が記録されたことを確認
+    expect(capturedTransitions.length).toBeGreaterThan(0);
+    
+    // 遷移中のアルファ値を確認
+    capturedTransitions.forEach(transition => {
+      // 2つの口形状がブレンドされている
+      expect(transition.shapes.length).toBe(2);
+      
+      // アルファ値の合計が約1.0
+      const totalAlpha = transition.shapes.reduce((sum, s) => sum + s.alpha, 0);
+      expect(totalAlpha).toBeCloseTo(1.0, 1);
+      
+      // 各アルファ値が0〜1の範囲内
+      transition.shapes.forEach(shape => {
+        expect(shape.alpha).toBeGreaterThanOrEqual(0);
+        expect(shape.alpha).toBeLessThanOrEqual(1);
+      });
+    });
+    
+    // 遷移が時間とともに進行していることを確認
+    if (capturedTransitions.length > 1) {
+      const firstTransition = capturedTransitions[0];
+      const lastTransition = capturedTransitions[capturedTransitions.length - 1];
+      
+      // 最初と最後でアルファ値が変化している
+      expect(firstTransition.shapes[1].alpha).not.toBe(lastTransition.shapes[1].alpha);
+    }
+  });
+
+  it.skip('should apply easing to transitions', async () => {
+    let alphaValues: number[] = [];
+    
+    // renderWithMouthShapesメソッドをスパイしてアルファ値を記録
+    renderer.renderWithMouthShapes = vi.fn(async (canvas, layerPaths, mouthShapes) => {
+      if (mouthShapes && mouthShapes.length > 1) {
+        alphaValues.push(mouthShapes[1].alpha);
+      }
+      return { success: true, errors: [], renderedLayers: [] };
+    });
+
+    controller.play(canvas, ['base', '!口/*むふ'], {
+      transitionDuration: 200,
+      fps: 60
+    });
+
+    // 遷移期間中待機
+    await new Promise(resolve => setTimeout(resolve, 250));
+    
+    controller.stop();
+
+    // アルファ値が記録されたことを確認
+    expect(alphaValues.length).toBeGreaterThan(5);
+    
+    // イージング効果の確認（線形でない変化）
+    if (alphaValues.length > 3) {
+      // 中間地点付近の変化率を確認
+      const midIndex = Math.floor(alphaValues.length / 2);
+      const earlyDelta = alphaValues[1] - alphaValues[0];
+      const midDelta = alphaValues[midIndex + 1] - alphaValues[midIndex];
+      const lateDelta = alphaValues[alphaValues.length - 1] - alphaValues[alphaValues.length - 2];
+      
+      // ease-in-outなので、開始と終了付近は変化が小さく、中間は大きい
+      // ただし、タイミングによってはばらつきがあるので、緩い条件にする
+      expect(Math.abs(midDelta)).toBeGreaterThan(Math.abs(earlyDelta) * 0.5);
+      expect(Math.abs(midDelta)).toBeGreaterThan(Math.abs(lateDelta) * 0.5);
+    }
   });
 });

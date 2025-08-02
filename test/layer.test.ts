@@ -98,10 +98,13 @@ describe('LayersRenderer', () => {
   });
 
   it('should render layers with default mouth shape', async () => {
-    const result = await renderer.render(canvas, {
-      layerPaths: ['!枝豆/*枝豆通常', '!口/*むふ', '!目/*普通目'],
-      mouthShape: 'closed'
-    });
+    const result = await renderer.renderWithMouthShapes(canvas, 
+      ['!枝豆/*枝豆通常', '!口/*むふ', '!目/*普通目'],
+      [{
+        shape: 'closed',
+        alpha: 1.0
+      }]
+    );
 
     expect(result.success).toBe(true);
     expect(result.errors).toHaveLength(0);
@@ -112,10 +115,13 @@ describe('LayersRenderer', () => {
   });
 
   it('should render layers in correct order (back to front)', async () => {
-    const result = await renderer.render(canvas, {
-      layerPaths: ['!枝豆/*枝豆通常', '!目/*普通目', '!口/*むふ'],
-      mouthShape: 'closed'
-    });
+    const result = await renderer.renderWithMouthShapes(canvas,
+      ['!枝豆/*枝豆通常', '!目/*普通目', '!口/*むふ'],
+      [{
+        shape: 'closed',
+        alpha: 1.0
+      }]
+    );
 
     expect(result.success).toBe(true);
     const drawCalls = (ctx.drawImage as any).mock.calls;
@@ -129,10 +135,13 @@ describe('LayersRenderer', () => {
   });
 
   it('should replace mouth layer based on mouth shape', async () => {
-    const result = await renderer.render(canvas, {
-      layerPaths: ['!枝豆/*枝豆通常', '!口/*むふ', '!目/*普通目'],
-      mouthShape: 'a'
-    });
+    const result = await renderer.renderWithMouthShapes(canvas,
+      ['!枝豆/*枝豆通常', '!口/*むふ', '!目/*普通目'],
+      [{
+        shape: 'a',
+        alpha: 1.0
+      }]
+    );
 
     expect(result.success).toBe(true);
     
@@ -151,10 +160,9 @@ describe('LayersRenderer', () => {
   });
 
   it('should apply opacity correctly', async () => {
-    const result = await renderer.render(canvas, {
-      layerPaths: ['!目/*普通目'],
-      mouthShape: 'closed'
-    });
+    const result = await renderer.render(canvas, [
+      { layerPath: '!目/*普通目', alpha: 1.0 }
+    ]);
 
     expect(result.success).toBe(true);
     
@@ -163,10 +171,10 @@ describe('LayersRenderer', () => {
   });
 
   it('should return render result with error information', async () => {
-    const result = await renderer.render(canvas, {
-      layerPaths: ['!存在しないレイヤー', '!枝豆/*枝豆通常'],
-      mouthShape: 'closed'
-    });
+    const result = await renderer.render(canvas, [
+      { layerPath: '!存在しないレイヤー', alpha: 1.0 },
+      { layerPath: '!枝豆/*枝豆通常', alpha: 1.0 }
+    ]);
 
     expect(result.success).toBe(false);
     expect(result.errors).toHaveLength(1);
@@ -183,10 +191,10 @@ describe('LayersRenderer', () => {
     // キャッシュから画像を削除
     imageCache.delete('assets/edamame.png');
 
-    const result = await renderer.render(canvas, {
-      layerPaths: ['!枝豆/*枝豆通常', '!目/*普通目'],
-      mouthShape: 'closed'
-    });
+    const result = await renderer.render(canvas, [
+      { layerPath: '!枝豆/*枝豆通常', alpha: 1.0 },
+      { layerPath: '!目/*普通目', alpha: 1.0 }
+    ]);
 
     expect(result.success).toBe(false);
     expect(result.errors).toHaveLength(1);
@@ -199,19 +207,71 @@ describe('LayersRenderer', () => {
     expect(ctx.drawImage).toHaveBeenCalledTimes(1); // 目のレイヤーのみ描画
   });
 
-  it('should handle invalid mouth shape', async () => {
-    const result = await renderer.render(canvas, {
-      layerPaths: ['!口/*むふ'],
-      mouthShape: 'invalid' as any
-    });
+  it('should blend two mouth shapes when multiple mouthShapes are provided', async () => {
+    const result = await renderer.renderWithMouthShapes(canvas,
+      ['!目/*普通目', '!口/*むふ'],
+      [
+        {
+          shape: 'closed',
+          alpha: 0.5
+        },
+        {
+          shape: 'a',
+          alpha: 0.5
+        }
+      ]
+    );
 
-    expect(result.success).toBe(false);
-    expect(result.errors).toHaveLength(1);
-    expect(result.errors[0]).toEqual({
-      type: 'INVALID_MOUTH_SHAPE',
-      details: 'Invalid mouth shape: invalid',
-      layerPath: '!口/*むふ'
+    expect(result.success).toBe(true);
+    expect(ctx.drawImage).toHaveBeenCalledTimes(3); // 目×1、口(closed)×1、口(a)×1
+    
+    // アルファ値の確認
+    expect(ctx.globalAlpha).toBe(1); // 最終的に復元される
+  });
+
+  it('should apply different alpha values for blended mouth shapes', async () => {
+    // globalAlpha の呼び出し履歴を確認
+    const alphaHistory: number[] = [];
+    Object.defineProperty(ctx, 'globalAlpha', {
+      get: () => 1,
+      set: (value: number) => { alphaHistory.push(value); }
     });
+    
+    const result = await renderer.renderWithMouthShapes(canvas,
+      ['!口/*むふ'],
+      [
+        {
+          shape: 'closed',
+          alpha: 0.7
+        },
+        {
+          shape: 'a',
+          alpha: 0.3
+        }
+      ]
+    );
+
+    expect(result.success).toBe(true);
+    
+    // 0.7（元の口）と0.3（ブレンド口）が設定されるはず
+    expect(alphaHistory).toContain(0.7);
+    expect(alphaHistory).toContain(0.3);
+  });
+
+  it('should handle invalid mouth shape', async () => {
+    const result = await renderer.renderWithMouthShapes(canvas,
+      ['!口/*むふ'],
+      [{
+        shape: 'invalid' as any,
+        alpha: 1.0
+      }]
+    );
+
+    // 無効な口形状は無視されるが、エラーにはならない
+    expect(result.success).toBe(true);
+    expect(result.errors).toHaveLength(0);
+    // 口レイヤーは描画されない
+    expect(result.renderedLayers).not.toContain('!口/*むふ');
   });
 
   it('should throw error when canvas context is not available', async () => {
@@ -219,10 +279,9 @@ describe('LayersRenderer', () => {
       getContext: vi.fn().mockReturnValue(null)
     } as any;
 
-    await expect(renderer.render(badCanvas, {
-      layerPaths: ['!枝豆/*枝豆通常'],
-      mouthShape: 'closed'
-    })).rejects.toThrow('Failed to get 2D context from canvas');
+    await expect(renderer.render(badCanvas, [
+      { layerPath: '!枝豆/*枝豆通常', alpha: 1.0 }
+    ])).rejects.toThrow('Failed to get 2D context from canvas');
   });
 
   it('should get required image paths including all mouth shapes', () => {

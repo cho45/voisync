@@ -10,12 +10,25 @@ export class AnimationController {
     // 再生状態
     isPlaying = false;
     currentFrameIndex = -1;
+    // 口形状遷移状態
+    currentTransition = null;
+    lastMouthShape = null;
     constructor(frames, renderer) {
         if (frames.length === 0) {
             throw new Error('Frames array cannot be empty');
         }
         this.frames = frames;
         this.renderer = renderer;
+    }
+    /**
+     * ease-in-out関数（3次関数）
+     * @param t 0から1の値
+     * @returns イージング後の値（0から1）
+     */
+    easeInOut(t) {
+        return t < 0.5
+            ? 2 * t * t
+            : 1 - Math.pow(-2 * t + 2, 2) / 2;
     }
     /**
      * アニメーションを再生
@@ -27,6 +40,8 @@ export class AnimationController {
         }
         this.isPlaying = true;
         this.currentFrameIndex = -1;
+        this.currentTransition = null;
+        this.lastMouthShape = null;
         // 音声を開始
         if (options?.audioContext && options?.audioBuffer) {
             this.audioContext = options.audioContext;
@@ -70,20 +85,62 @@ export class AnimationController {
             if (frameIndex !== -1 && frameIndex !== this.currentFrameIndex) {
                 this.currentFrameIndex = frameIndex;
                 const frame = this.frames[frameIndex];
-                // レンダリング
-                this.renderer.render(canvas, {
-                    layerPaths: baseLayers,
-                    mouthShape: frame.mouth
-                }).then(result => {
-                    if (!result.success) {
-                        console.error('Render errors:', result.errors);
-                    }
-                }).catch(error => {
-                    console.error('Render error:', error);
-                });
+                const transitionDuration = (options?.transitionDuration ?? 150) / 1000; // ミリ秒を秒に変換（デフォルト150ms）
+                // 口形状が変わった場合、遷移を開始
+                if (this.lastMouthShape && this.lastMouthShape !== frame.mouth) {
+                    this.currentTransition = {
+                        fromMouth: this.lastMouthShape,
+                        toMouth: frame.mouth,
+                        startTime: currentTime,
+                        duration: Math.min(transitionDuration, frame.duration * 0.5) // フレーム時間の半分を上限とする
+                    };
+                }
+                this.lastMouthShape = frame.mouth;
                 if (options?.onFrame) {
                     options.onFrame(frameIndex, currentTime);
                 }
+            }
+            // レンダリング処理
+            if (this.currentTransition) {
+                // 遷移中の場合
+                const elapsed = currentTime - this.currentTransition.startTime;
+                const progress = Math.min(elapsed / this.currentTransition.duration, 1);
+                const easedProgress = this.easeInOut(progress);
+                if (progress >= 1) {
+                    // 遷移完了
+                    this.renderer.renderWithMouthShapes(canvas, baseLayers, [{
+                            shape: this.currentTransition.toMouth,
+                            alpha: 1.0
+                        }]).catch(error => {
+                        console.error('Render error:', error);
+                    });
+                    this.currentTransition = null;
+                }
+                else {
+                    // 遷移中：2つの口形状をブレンド
+                    console.log(`Transition: ${this.currentTransition.fromMouth} -> ${this.currentTransition.toMouth}, progress: ${progress.toFixed(2)}, eased: ${easedProgress.toFixed(2)}`);
+                    this.renderer.renderWithMouthShapes(canvas, baseLayers, [
+                        {
+                            shape: this.currentTransition.fromMouth,
+                            alpha: 1 - easedProgress
+                        },
+                        {
+                            shape: this.currentTransition.toMouth,
+                            alpha: easedProgress
+                        }
+                    ]).catch(error => {
+                        console.error('Render error:', error);
+                    });
+                }
+            }
+            else if (this.lastMouthShape) {
+                // 通常のレンダリング
+                this.renderer.renderWithMouthShapes(canvas, baseLayers, [{
+                        shape: this.lastMouthShape,
+                        alpha: 1.0
+                    }]).catch(error => {
+                    console.error('Render error:', error);
+                });
             }
             // アニメーションの終了チェック
             const totalDuration = this.getTotalDuration();
@@ -104,6 +161,8 @@ export class AnimationController {
     stop() {
         this.isPlaying = false;
         this.currentFrameIndex = -1;
+        this.currentTransition = null;
+        this.lastMouthShape = null;
         if (this.animationId !== null) {
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
@@ -141,10 +200,10 @@ export class AnimationController {
             if (frameIndex !== -1) {
                 const frame = this.frames[frameIndex];
                 // フレームをレンダリング
-                const result = await this.renderer.render(canvas, {
-                    layerPaths: baseLayers,
-                    mouthShape: frame.mouth
-                });
+                const result = await this.renderer.renderWithMouthShapes(canvas, baseLayers, [{
+                        shape: frame.mouth,
+                        alpha: 1.0
+                    }]);
                 if (!result.success) {
                     console.error('Export frame render errors:', result.errors);
                     continue;

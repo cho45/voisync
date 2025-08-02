@@ -1,4 +1,10 @@
-import type { LayersData, MouthShape, MouthLayerMapping, RenderOptions, RenderResult, RenderError } from './types';
+import type { LayersData, MouthShape, MouthLayerMapping, RenderResult, RenderError } from './types';
+
+// 内部用：レイヤーとアルファ値の組み合わせ
+interface LayerWithAlpha {
+  layerPath: string;
+  alpha: number;
+}
 
 export class LayersRenderer {
   private imageCache: Map<string, HTMLImageElement | ImageBitmap>;
@@ -16,9 +22,30 @@ export class LayersRenderer {
   }
 
   /**
+   * 口形状を指定してレイヤーを描画（AnimationControllerから呼ばれる）
+   */
+  async renderWithMouthShapes(
+    canvas: HTMLCanvasElement, 
+    layerPaths: string[], 
+    mouthShapes: Array<{shape: MouthShape, alpha: number}>
+  ): Promise<RenderResult> {
+    // 口レイヤーを展開
+    const expandedLayers = this.expandLayersWithMouthShapes(layerPaths, mouthShapes);
+    
+    // デバッグ：複数の口形状がある場合はログ出力
+    if (mouthShapes.length > 1) {
+      console.log('Multiple mouth shapes:', mouthShapes);
+      console.log('Expanded layers:', expandedLayers.filter(l => l.layerPath.includes('!口/')));
+    }
+    
+    // 展開したレイヤーでrenderを呼び出す
+    return this.render(canvas, expandedLayers);
+  }
+
+  /**
    * 指定されたレイヤーをcanvasに描画
    */
-  async render(canvas: HTMLCanvasElement, options: RenderOptions): Promise<RenderResult> {
+  async render(canvas: HTMLCanvasElement, layers: LayerWithAlpha[]): Promise<RenderResult> {
     const errors: RenderError[] = [];
     const renderedLayers: string[] = [];
     
@@ -30,45 +57,26 @@ export class LayersRenderer {
     // キャンバスをクリア
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 口パーツを置換したレイヤーパスのリストを作成
-    let layerPaths: string[];
-    try {
-      layerPaths = this.replaceMouthLayer(options.layerPaths, options.mouthShape);
-    } catch (error) {
-      // 無効な口形状の場合
-      options.layerPaths.forEach(path => {
-        if (path.includes('!口/')) {
-          errors.push({
-            type: 'INVALID_MOUTH_SHAPE',
-            details: `Invalid mouth shape: ${options.mouthShape}`,
-            layerPath: path
-          });
-        }
-      });
-      return { success: false, errors, renderedLayers };
-    }
-
     // 指定されたレイヤーパスに対応するレイヤーを検索
     type LayerType = LayersData['layers'][0];
-    const targetLayers: Array<{ layer: LayerType; index: number; originalPath: string }> = [];
+    const targetLayers: Array<{ layer: LayerType; index: number; layerPath: string; alpha: number }> = [];
     
-    for (let i = 0; i < layerPaths.length; i++) {
-      const targetPath = layerPaths[i];
-      const originalPath = options.layerPaths[i];
-      const layerIndex = this.layersData.layers.findIndex(l => l.layerPath === targetPath);
+    for (const layerInfo of layers) {
+      const layerIndex = this.layersData.layers.findIndex(l => l.layerPath === layerInfo.layerPath);
       
       if (layerIndex === -1) {
         errors.push({
           type: 'LAYER_NOT_FOUND',
-          details: `Layer not found: ${originalPath}`,
-          layerPath: originalPath
+          details: `Layer not found: ${layerInfo.layerPath}`,
+          layerPath: layerInfo.layerPath
         });
         continue;
       }
       targetLayers.push({ 
         layer: this.layersData.layers[layerIndex], 
         index: layerIndex,
-        originalPath 
+        layerPath: layerInfo.layerPath,
+        alpha: layerInfo.alpha
       });
     }
 
@@ -76,34 +84,39 @@ export class LayersRenderer {
     // インデックスが大きい順（配列の後ろから前へ）= 背面から前面へ描画
     targetLayers.sort((a, b) => b.index - a.index);
 
-    // ソートされた順序で合成
-    for (const { layer, originalPath } of targetLayers) {
+    // レイヤーの描画
+    for (const { layer, layerPath, alpha } of targetLayers) {
       // キャッシュから画像を取得
       const image = this.imageCache.get(layer.filePath);
       if (!image) {
         errors.push({
           type: 'IMAGE_NOT_CACHED',
           details: `Image not found in cache: ${layer.filePath}`,
-          layerPath: originalPath
+          layerPath: layerPath
         });
         continue;
       }
 
-      // opacity が定義されている場合は適用
+      // レイヤーのopacityと指定されたalphaを両方適用
       const prevAlpha = ctx.globalAlpha;
-      if (layer.opacity !== undefined && layer.opacity !== 1) {
-        ctx.globalAlpha = layer.opacity;
+      const layerOpacity = layer.opacity ?? 1.0;
+      const finalAlpha = layerOpacity * alpha;
+      ctx.globalAlpha = finalAlpha;
+      
+      // デバッグ：口レイヤーのアルファ値を出力
+      if (layerPath.includes('!口/') && alpha < 1.0) {
+        console.log(`Drawing mouth layer: ${layerPath}, alpha: ${alpha}, final: ${finalAlpha}`);
       }
 
       // 画像を描画
       try {
         ctx.drawImage(image, layer.bounds.left, layer.bounds.top);
-        renderedLayers.push(originalPath);
+        renderedLayers.push(layerPath);
       } catch (error) {
         errors.push({
           type: 'CANVAS_ERROR',
           details: `Failed to draw image: ${error}`,
-          layerPath: originalPath
+          layerPath: layerPath
         });
       }
 
@@ -141,22 +154,34 @@ export class LayersRenderer {
   }
 
   /**
-   * 口パーツを置換したレイヤーパスのリストを返す
+   * レイヤーパスを展開し、口レイヤーを複数の口形状に置換
    */
-  private replaceMouthLayer(layerPaths: string[], mouthShape: MouthShape): string[] {
-    return layerPaths.map(path => {
-      // 口パーツのパスかどうかを判定（"!口/"を含むかどうか）
+  private expandLayersWithMouthShapes(layerPaths: string[], mouthShapes: Array<{shape: MouthShape, alpha: number}>): LayerWithAlpha[] {
+    const expandedLayers: LayerWithAlpha[] = [];
+    
+    for (const path of layerPaths) {
       if (path.includes('!口/')) {
-        const replacement = this.mouthMapping[mouthShape];
-        if (!replacement) {
-          throw new Error(`Invalid mouth shape: ${mouthShape}`);
+        // 口レイヤーは複数の口形状に展開
+        for (const mouthShape of mouthShapes) {
+          const replacedPath = this.mouthMapping[mouthShape.shape];
+          if (replacedPath) {
+            expandedLayers.push({
+              layerPath: replacedPath,
+              alpha: mouthShape.alpha
+            });
+          }
         }
-        return replacement;
+      } else {
+        // 通常のレイヤーはそのまま追加
+        expandedLayers.push({
+          layerPath: path,
+          alpha: 1.0
+        });
       }
-      return path;
-    });
+    }
+    
+    return expandedLayers;
   }
-
 
   /**
    * キャンバスのサイズを取得
