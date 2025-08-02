@@ -1,16 +1,42 @@
 {
   "name": "voisync",
   "version": "1.0.0",
-  "main": "app.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:browser": "vitest --config vitest.browser.config.ts",
+    "test:browser:run": "vitest run --config vitest.browser.config.ts",
+    "generate:types": "openapi-typescript ./assets/openapi.json -o ./src/types/voicevox.d.ts",
+    "demo:install": "cd demo && npm install",
+    "demo:dev": "cd demo && npm run dev"
   },
   "author": "cho45",
   "license": "MIT",
   "description": "",
   "dependencies": {
     "canvas": "^3.1.2",
+    "openapi-fetch": "^0.14.0",
     "psd": "^3.4.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@types/node": "^24.1.0",
+    "@vitest/browser": "^3.2.4",
+    "openapi-typescript": "^7.8.0",
+    "playwright": "^1.54.1",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.6",
+    "vitest": "^3.2.4"
   }
 }
