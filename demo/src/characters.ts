@@ -2,6 +2,24 @@ import type { CharacterConfig } from '@voisync/types';
 
 // キャラクター設定のレジストリ
 export const characters: Record<string, CharacterConfig> = {
+  sample: {
+    id: 'sample',
+    name: 'VoiSync Sample',
+    layersPath: '/voisync-sample.psd.expanded/layers.json',
+    baseLayers: [
+      '!口/*ん',
+      'ベース',
+    ],
+    mouthMapping: {
+      'a': '!口/*お',   // 「あ」に近い形
+      'i': '!口/*う',   // 「い」に近い形  
+      'u': '!口/*う',      // 「う」の形
+      'e': '!口/*お',   // 「え」に近い形
+      'o': '!口/*お',      // 「お」の形
+      'n': '!口/*ん',    // 「ん」の形
+      'closed': '!口/*ん', // 閉じた口
+    }
+  },
   zundamon: {
     id: 'zundamon',
     name: 'ずんだもん',
@@ -68,7 +86,7 @@ export const characters: Record<string, CharacterConfig> = {
 };
 
 // デフォルトキャラクターID
-export const defaultCharacterId = 'zundamon';
+export const defaultCharacterId = 'sample';
 
 // キャラクター一覧を取得
 export function getCharacterList() {

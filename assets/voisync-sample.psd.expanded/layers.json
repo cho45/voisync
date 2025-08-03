@@ -1,0 +1,80 @@
+{
+  "document": {
+    "width": 660,
+    "height": 1743
+  },
+  "layers": [
+    {
+      "name": "*ん",
+      "layerPath": "!口/*ん",
+      "filePath": "!口/_ん.png",
+      "visible": true,
+      "bounds": {
+        "left": 308,
+        "top": 399,
+        "width": 45,
+        "height": 34
+      }
+    },
+    {
+      "name": "*あ",
+      "layerPath": "!口/*あ",
+      "filePath": "!口/_あ.png",
+      "visible": false,
+      "bounds": {
+        "left": 283,
+        "top": 385,
+        "width": 99,
+        "height": 72
+      }
+    },
+    {
+      "name": "*う",
+      "layerPath": "!口/*う",
+      "filePath": "!口/_う.png",
+      "visible": false,
+      "bounds": {
+        "left": 297,
+        "top": 397,
+        "width": 69,
+        "height": 52
+      }
+    },
+    {
+      "name": "*お",
+      "layerPath": "!口/*お",
+      "filePath": "!口/_お.png",
+      "visible": false,
+      "bounds": {
+        "left": 280,
+        "top": 383,
+        "width": 107,
+        "height": 76
+      }
+    },
+    {
+      "name": "ベース",
+      "layerPath": "ベース",
+      "filePath": "ベース.png",
+      "visible": true,
+      "bounds": {
+        "left": 46,
+        "top": 34,
+        "width": 585,
+        "height": 1693
+      }
+    },
+    {
+      "name": "レイヤー 1",
+      "layerPath": "レイヤー 1",
+      "filePath": "レイヤー 1.png",
+      "visible": false,
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "width": 660,
+        "height": 1743
+      }
+    }
+  ]
+}
