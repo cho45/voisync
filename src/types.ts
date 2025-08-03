@@ -89,3 +89,12 @@ export interface ExportOptions {
   format?: 'png' | 'jpeg' | 'webp';  // デフォルト: 'png'
   quality?: number;     // 0.0 - 1.0 (jpegとwebpのみ)
 }
+
+// キャラクター設定
+export interface CharacterConfig {
+  id: string;                  // 一意のID
+  name: string;                // 表示名
+  layersPath: string;          // layers.jsonへのパス
+  baseLayers: string[];        // 基本レイヤーのリスト
+  mouthMapping: MouthLayerMapping; // 口形状マッピング
+}

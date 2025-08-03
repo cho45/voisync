@@ -81,11 +81,11 @@ export class AnimationController {
             }
             // 現在の時刻に対応するフレームを見つける
             const frameIndex = this.findFrameIndexAtTime(currentTime);
-            // フレームが変わった場合のみレンダリング
+            // フレームが変わった場合の処理
             if (frameIndex !== -1 && frameIndex !== this.currentFrameIndex) {
                 this.currentFrameIndex = frameIndex;
                 const frame = this.frames[frameIndex];
-                const transitionDuration = (options?.transitionDuration ?? 150) / 1000; // ミリ秒を秒に変換（デフォルト150ms）
+                const transitionDuration = (options?.transitionDuration ?? 80) / 1000; // ミリ秒を秒に変換（デフォルト150ms）
                 // 口形状が変わった場合、遷移を開始
                 if (this.lastMouthShape && this.lastMouthShape !== frame.mouth) {
                     this.currentTransition = {
@@ -100,7 +100,7 @@ export class AnimationController {
                     options.onFrame(frameIndex, currentTime);
                 }
             }
-            // レンダリング処理
+            // レンダリング処理（毎フレーム実行）
             if (this.currentTransition) {
                 // 遷移中の場合
                 const elapsed = currentTime - this.currentTransition.startTime;
@@ -133,14 +133,17 @@ export class AnimationController {
                     });
                 }
             }
-            else if (this.lastMouthShape) {
-                // 通常のレンダリング
-                this.renderer.renderWithMouthShapes(canvas, baseLayers, [{
-                        shape: this.lastMouthShape,
-                        alpha: 1.0
-                    }]).catch(error => {
-                    console.error('Render error:', error);
-                });
+            else if (frameIndex !== -1) {
+                // 通常のレンダリング（遷移中でない場合）
+                const currentFrame = this.frames[frameIndex];
+                if (currentFrame) {
+                    this.renderer.renderWithMouthShapes(canvas, baseLayers, [{
+                            shape: currentFrame.mouth,
+                            alpha: 1.0
+                        }]).catch(error => {
+                        console.error('Render error:', error);
+                    });
+                }
             }
             // アニメーションの終了チェック
             const totalDuration = this.getTotalDuration();

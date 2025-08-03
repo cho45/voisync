@@ -19,6 +19,19 @@
         </div>
 
         <div class="form-group">
+          <label for="character-select">キャラクター</label>
+          <select
+            id="character-select"
+            v-model="selectedCharacterId"
+            :disabled="isLoading"
+          >
+            <option v-for="char in characterList" :key="char.id" :value="char.id">
+              {{ char.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
           <label for="speaker-select">スピーカー</label>
           <select
             id="speaker-select"
@@ -104,7 +117,7 @@
                   <label :for="`mouth-${shape}`" class="mapping-label">{{ shape }}:</label>
                   <input
                     :id="`mouth-${shape}`"
-                    v-model="mouthMapping[shape]"
+                    v-model="editableMouthMapping[shape]"
                     type="text"
                     class="mapping-input"
                   />
@@ -127,8 +140,8 @@
           :speed-scale="speedScale"
           :layers-data="layersData"
           :image-cache="imageCache"
-          :base-layers="baseLayers"
-          :mouth-mapping="mouthMapping"
+          :base-layers="showAdvanced ? editableBaseLayers : baseLayers"
+          :mouth-mapping="showAdvanced ? editableMouthMapping : mouthMapping"
           @playing="handlePlaying"
           @stopped="handleStopped"
           @error="handleError"
@@ -144,7 +157,8 @@ import { ref, computed, onMounted, watch } from 'vue';
 import VoiSyncPlayer from '@/components/VoiSyncPlayer.vue';
 import { getSpeakers, type Speaker } from '@/api/voicevox';
 import { loadImages } from '@voisync/index';
-import type { LayersData, MouthLayerMapping } from '@voisync/types';
+import type { LayersData, MouthLayerMapping, CharacterConfig } from '@voisync/types';
+import { characters, defaultCharacterId, getCharacterList, getCharacterConfig } from '@/characters';
 
 // UI状態
 const text = ref('こんにちは、ずんだもんなのだ');
@@ -157,6 +171,11 @@ const errorMessage = ref('');
 const isGenerating = ref(false);
 const showAdvanced = ref(false);
 
+// キャラクター選択
+const selectedCharacterId = ref(defaultCharacterId);
+const characterList = getCharacterList();
+const selectedCharacter = computed(() => getCharacterConfig(selectedCharacterId.value));
+
 // プレイヤー参照
 const playerRef = ref<InstanceType<typeof VoiSyncPlayer>>();
 
@@ -164,36 +183,27 @@ const playerRef = ref<InstanceType<typeof VoiSyncPlayer>>();
 const layersData = ref<LayersData | null>(null);
 const imageCache = ref<Map<string, HTMLImageElement | ImageBitmap> | null>(null);
 
-// 基本レイヤー設定（ずんだもん用）
-const baseLayers = ref<string[]>([
-  '!枝豆/*枝豆通常',
-  '!眉/*普通眉',
-  '!目/*目セット/!黒目/*カメラ目線',
-  '!目/*目セット/*普通白目',
-  '!顔色/*ほっぺ',
-  '!口/*むふ',
-  '*服装1/!右腕/*腰',
-  '*服装1/!左腕/*腰',
-  '*服装1/*いつもの服',
-  '尻尾的なアレ'
-]);
+// 選択されたキャラクターの設定を使用
+const baseLayers = computed(() => selectedCharacter.value?.baseLayers || []);
+const mouthMapping = computed(() => selectedCharacter.value?.mouthMapping || {} as MouthLayerMapping);
 
-// 口形状マッピング
-const mouthMapping = ref<MouthLayerMapping>({
-  'a': '!口/*んあー',   // 「あ」に近い形
-  'i': '!口/*んへー',   // 「い」に近い形  
-  'u': '!口/*お',      // 「う」の形
-  'e': '!口/*んへー',   // 「え」に近い形
-  'o': '!口/*お',      // 「お」の形
-  'n': '!口/*んー',    // 「ん」の形
-  'closed': '!口/*むふ', // 閉じた口
-});
+// Advanced設定用（編集可能なコピー）
+const editableBaseLayers = ref<string[]>([]);
+const editableMouthMapping = ref<MouthLayerMapping>({} as MouthLayerMapping);
+
+// キャラクター変更時に編集用設定を更新
+watch(selectedCharacter, (char) => {
+  if (char) {
+    editableBaseLayers.value = [...char.baseLayers];
+    editableMouthMapping.value = { ...char.mouthMapping };
+  }
+}, { immediate: true });
 
 // テキストエディタ用の値
 const baseLayersText = computed({
-  get: () => baseLayers.value.join('\n'),
+  get: () => editableBaseLayers.value.join('\n'),
   set: (value: string) => {
-    baseLayers.value = value.split('\n').filter(line => line.trim());
+    editableBaseLayers.value = value.split('\n').filter(line => line.trim());
     // 編集時にエラーメッセージをクリア
     errorMessage.value = '';
   }
@@ -227,13 +237,16 @@ const loadSpeakers = async () => {
 const getRequiredLayers = () => {
   const requiredLayers = new Set<string>();
   
-  // baseLayersから収集
-  baseLayers.value.forEach(layer => {
+  // 必要なレイヤー名を収集
+  const currentBaseLayers = showAdvanced.value ? editableBaseLayers.value : baseLayers.value;
+  const currentMouthMapping = showAdvanced.value ? editableMouthMapping.value : mouthMapping.value;
+  
+  currentBaseLayers.forEach(layer => {
     requiredLayers.add(layer);
   });
   
   // mouthMappingから収集
-  Object.values(mouthMapping.value).forEach(layer => {
+  Object.values(currentMouthMapping).forEach(layer => {
     requiredLayers.add(layer);
   });
   
@@ -244,8 +257,11 @@ const getRequiredLayers = () => {
 const loadAdditionalImages = async () => {
   if (!layersData.value || !imageCache.value) return;
   
+  const character = selectedCharacter.value;
+  if (!character) return;
+  
   const requiredLayers = getRequiredLayers();
-  const baseUrl = '/ずんだもん立ち絵素材2.3/ずんだもん立ち絵素材2.3.psd.expanded/';
+  const baseUrl = character.layersPath.replace(/layers\.json$/, '');
   const newImagePaths: string[] = [];
   const filePathToLayerPath = new Map<string, string>();
   
@@ -285,8 +301,13 @@ const loadAdditionalImages = async () => {
 // レイヤーデータとイメージを読み込み
 const loadResources = async () => {
   try {
+    const character = selectedCharacter.value;
+    if (!character) {
+      throw new Error('キャラクターが選択されていません');
+    }
+    
     // layers.jsonを読み込み
-    const response = await fetch('/ずんだもん立ち絵素材2.3/ずんだもん立ち絵素材2.3.psd.expanded/layers.json');
+    const response = await fetch(character.layersPath);
     if (!response.ok) {
       throw new Error(`Failed to load layers.json: ${response.statusText}`);
     }
@@ -296,7 +317,7 @@ const loadResources = async () => {
     const requiredLayers = getRequiredLayers();
     
     // 必要なレイヤーの画像パスのみを抽出
-    const baseUrl = '/ずんだもん立ち絵素材2.3/ずんだもん立ち絵素材2.3.psd.expanded/';
+    const baseUrl = character.layersPath.replace(/layers\.json$/, '');
     const imagePaths: string[] = [];
     const filePathToLayerPath = new Map<string, string>();
     
@@ -358,11 +379,21 @@ const handleLoading = (loading: boolean) => {
 };
 
 // baseLayers と mouthMapping の変更を監視
-watch([baseLayers, mouthMapping], () => {
+watch([baseLayers, mouthMapping, editableBaseLayers, editableMouthMapping, () => showAdvanced.value], () => {
   if (!isInitializing.value) {
     loadAdditionalImages();
   }
 }, { deep: true });
+
+// キャラクター変更時にリソース再読み込み
+watch(selectedCharacterId, async () => {
+  if (!isInitializing.value) {
+    isInitializing.value = true;
+    imageCache.value = null;  // キャッシュをクリア
+    await loadResources();
+    isInitializing.value = false;
+  }
+});
 
 // 初期化
 onMounted(async () => {

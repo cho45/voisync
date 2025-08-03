@@ -69,4 +69,11 @@ export interface ExportOptions {
     format?: 'png' | 'jpeg' | 'webp';
     quality?: number;
 }
+export interface CharacterConfig {
+    id: string;
+    name: string;
+    layersPath: string;
+    baseLayers: string[];
+    mouthMapping: MouthLayerMapping;
+}
 //# sourceMappingURL=types.d.ts.map

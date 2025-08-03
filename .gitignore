@@ -1,5 +1,6 @@
 assets/*
 *.png
+demo/dist/
 
 node_modules/
 .claude/
