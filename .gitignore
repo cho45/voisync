@@ -4,3 +4,5 @@ demo/dist/
 
 node_modules/
 .claude/
+
+test/__screenshots__/

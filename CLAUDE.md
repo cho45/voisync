@@ -83,9 +83,7 @@ Canvas描画 / フレームエクスポート
 
 本プロジェクトは以下の既存JavaScriptスクリプトをTypeScriptライブラリ化したものです：
 
-- `expand-psd.js`: PSDファイルを個別の画像レイヤーに展開
-- `compose-layers.js`: レイヤー合成処理 → `LayersRenderer`として実装
-- `compose-lipsync.js`: リップシンク生成処理 → `LipSyncGenerator`として実装
+- `expand-psd.js`: PSDファイルを個別の画像レイヤーに展開（ユーティリティスクリプトとして現在も使用）
 
 ## アセット構成
 
@@ -118,4 +116,7 @@ const mouthMapping = {
 
 ## 注意事項
 
-- `npm run dev` は絶対するな.このコマンドはユーザによって実行される
+- `npm run dev` は絶対するな。このコマンドはユーザによって実行される
+- リント/型チェック用のスクリプトは現在定義されていない。コード品質確認はテストで実施
+- Canvas APIを使用するテストはブラウザ環境で実行する必要がある
+- VOICEVOX APIは外部依存のため、型定義は `npm run generate:types` で更新する
