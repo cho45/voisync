@@ -30,26 +30,30 @@ export class LipSyncGenerator {
   generateFrames(voiceVoxData: VoiceVoxSynthesisData): LipSyncFrame[] {
     const frames: LipSyncFrame[] = [];
     let currentTime = 0;
+    
+    // speedScaleを取得（デフォルトは1.0）
+    const speedScale = voiceVoxData.speedScale || 1.0;
 
     // 開始時の無音部分
     if (voiceVoxData.prePhonemeLength > 0) {
+      const adjustedDuration = voiceVoxData.prePhonemeLength / speedScale;
       frames.push({
         time: currentTime,
-        duration: voiceVoxData.prePhonemeLength,
+        duration: adjustedDuration,
         mouth: 'closed'
       });
-      currentTime += voiceVoxData.prePhonemeLength;
+      currentTime += adjustedDuration;
     }
 
     // 各アクセント句の処理
     for (const phrase of voiceVoxData.accent_phrases) {
       // 各モーラの処理
       for (const mora of phrase.moras) {
-        const moraFrames = this.generateMoraFrames(mora, currentTime);
+        const moraFrames = this.generateMoraFrames(mora, currentTime, speedScale);
         frames.push(...moraFrames);
         
         // 時間を進める
-        const moraDuration = this.calculateMoraDuration(mora);
+        const moraDuration = this.calculateMoraDuration(mora) / speedScale;
         currentTime += moraDuration;
       }
 
@@ -57,21 +61,23 @@ export class LipSyncGenerator {
       if (phrase.pause_mora) {
         const pauseDuration = phrase.pause_mora.vowel_length || 0;
         if (pauseDuration > 0) {
+          const adjustedPauseDuration = pauseDuration / speedScale;
           frames.push({
             time: currentTime,
-            duration: pauseDuration,
+            duration: adjustedPauseDuration,
             mouth: 'closed'
           });
-          currentTime += pauseDuration;
+          currentTime += adjustedPauseDuration;
         }
       }
     }
 
     // 終了時の無音部分
     if (voiceVoxData.postPhonemeLength > 0) {
+      const adjustedDuration = voiceVoxData.postPhonemeLength / speedScale;
       frames.push({
         time: currentTime,
-        duration: voiceVoxData.postPhonemeLength,
+        duration: adjustedDuration,
         mouth: 'closed'
       });
     }
@@ -83,13 +89,13 @@ export class LipSyncGenerator {
    * 単一のモーラから口形状フレームを生成
    * 閉鎖音の場合は複数フレームを生成する
    */
-  private generateMoraFrames(mora: Mora, startTime: number): LipSyncFrame[] {
+  private generateMoraFrames(mora: Mora, startTime: number, speedScale: number): LipSyncFrame[] {
     const frames: LipSyncFrame[] = [];
     let currentTime = startTime;
 
-    // 値の検証と正規化
-    const consonantLength = Math.max(0, mora.consonant_length || 0);
-    const vowelLength = Math.max(0, mora.vowel_length || 0);
+    // 値の検証と正規化（speedScaleで調整）
+    const consonantLength = Math.max(0, mora.consonant_length || 0) / speedScale;
+    const vowelLength = Math.max(0, mora.vowel_length || 0) / speedScale;
 
     // 子音部分の処理
     if (mora.consonant && consonantLength > 0) {

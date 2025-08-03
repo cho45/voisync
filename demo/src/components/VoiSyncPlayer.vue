@@ -21,6 +21,7 @@ import type { LayersData, MouthLayerMapping } from '@voisync/types';
 interface Props {
   text: string;
   speakerId: number;
+  speedScale: number;
   layersData: LayersData | null;
   imageCache: Map<string, HTMLImageElement | ImageBitmap> | null;
   baseLayers: string[];
@@ -68,6 +69,9 @@ const play = async () => {
 
     // VOICEVOX APIでクエリ作成
     const audioQuery = await createAudioQuery(props.text, props.speakerId);
+    
+    // speedScaleを設定
+    audioQuery.speedScale = props.speedScale;
 
     // 音声合成
     const audioData = await synthesize(audioQuery, props.speakerId);

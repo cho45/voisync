@@ -42,6 +42,25 @@
           </select>
         </div>
 
+        <div class="form-group">
+          <label for="speed-scale">話速: {{ speedScale }}</label>
+          <input
+            id="speed-scale"
+            type="range"
+            v-model.number="speedScale"
+            min="0.5"
+            max="2.0"
+            step="0.1"
+            :disabled="isLoading"
+            class="speed-scale-slider"
+          />
+          <div class="speed-scale-labels">
+            <span style="position: absolute; left: 0;">0.5</span>
+            <span style="position: absolute; left: 33.33%;">1.0</span>
+            <span style="position: absolute; right: 0;">2.0</span>
+          </div>
+        </div>
+
         <div class="button-group">
           <button
             @click="handlePlay"
@@ -105,6 +124,7 @@
           ref="playerRef"
           :text="text"
           :speaker-id="selectedSpeakerId"
+          :speed-scale="speedScale"
           :layers-data="layersData"
           :image-cache="imageCache"
           :base-layers="baseLayers"
@@ -129,6 +149,7 @@ import type { LayersData, MouthLayerMapping } from '@voisync/types';
 // UI状態
 const text = ref('こんにちは、ずんだもんなのだ');
 const selectedSpeakerId = ref(1);
+const speedScale = ref(1.0);
 const speakers = ref<Speaker[]>([]);
 const isLoading = ref(false);
 const isInitializing = ref(true);
@@ -161,7 +182,7 @@ const baseLayers = ref<string[]>([
 const mouthMapping = ref<MouthLayerMapping>({
   'a': '!口/*んあー',   // 「あ」に近い形
   'i': '!口/*んへー',   // 「い」に近い形  
-  'u': '!口/*ゆ',      // 「う」の形
+  'u': '!口/*お',      // 「う」の形
   'e': '!口/*んへー',   // 「え」に近い形
   'o': '!口/*お',      // 「お」の形
   'n': '!口/*んー',    // 「ん」の形
@@ -580,5 +601,18 @@ onMounted(async () => {
 .mapping-input:focus {
   outline: none;
   border-color: #4CAF50;
+}
+
+.speed-scale-slider {
+  width: 100%;
+  margin: 10px 0;
+}
+
+.speed-scale-labels {
+  position: relative;
+  height: 20px;
+  font-size: 12px;
+  color: #666;
+  margin-top: -5px;
 }
 </style>

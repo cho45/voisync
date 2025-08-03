@@ -412,4 +412,89 @@ describe('LipSyncGenerator', () => {
     expect(frames[2].mouth).toBe('n');
     expect(frames[2].time).toBeCloseTo(0.15, 10);
   });
+
+  describe('speedScale support', () => {
+    it('should adjust timing with speedScale=2.0 (2x speed)', () => {
+      const data = createVoiceVoxData([
+        createAccentPhrase([
+          createMora({ text: 'ア', vowel: 'a', vowel_length: 0.1 })
+        ])
+      ], {
+        prePhonemeLength: 0.1,
+        postPhonemeLength: 0.1
+      });
+      data.speedScale = 2.0;
+
+      const frames = generator.generateFrames(data);
+      
+      expect(frames).toHaveLength(3);
+      // speedScale=2.0の場合、時間は半分になる
+      expect(frames[0]).toEqual({ time: 0, duration: 0.05, mouth: 'closed' }); // pre: 0.1 / 2.0
+      expect(frames[1]).toEqual({ time: 0.05, duration: 0.05, mouth: 'a' }); // vowel: 0.1 / 2.0
+      expect(frames[2]).toEqual({ time: 0.1, duration: 0.05, mouth: 'closed' }); // post: 0.1 / 2.0
+    });
+
+    it('should adjust timing with speedScale=0.5 (0.5x speed)', () => {
+      const data = createVoiceVoxData([
+        createAccentPhrase([
+          createMora({ text: 'ア', vowel: 'a', vowel_length: 0.1 })
+        ])
+      ], {
+        prePhonemeLength: 0.1,
+        postPhonemeLength: 0.1
+      });
+      data.speedScale = 0.5;
+
+      const frames = generator.generateFrames(data);
+      
+      expect(frames).toHaveLength(3);
+      // speedScale=0.5の場合、時間は2倍になる
+      expect(frames[0]).toEqual({ time: 0, duration: 0.2, mouth: 'closed' }); // pre: 0.1 / 0.5
+      expect(frames[1]).toEqual({ time: 0.2, duration: 0.2, mouth: 'a' }); // vowel: 0.1 / 0.5
+      expect(frames[2]).toEqual({ time: 0.4, duration: 0.2, mouth: 'closed' }); // post: 0.1 / 0.5
+    });
+
+    it('should adjust complex pattern with speedScale', () => {
+      const data = createVoiceVoxData([
+        createAccentPhrase([
+          createMora({
+            text: 'カ',
+            consonant: 'k',
+            consonant_length: 0.1,
+            vowel: 'a',
+            vowel_length: 0.2
+          })
+        ], {
+          pause_mora: createMora({ text: '、', vowel: 'pau', vowel_length: 0.3, pitch: 0 })
+        })
+      ]);
+      data.speedScale = 1.5;
+
+      const frames = generator.generateFrames(data);
+      
+      expect(frames).toHaveLength(3);
+      // 1.5倍速の場合
+      expect(frames[0].duration).toBeCloseTo(0.1 / 1.5, 5); // k音
+      expect(frames[1].duration).toBeCloseTo(0.2 / 1.5, 5); // a母音
+      expect(frames[2].duration).toBeCloseTo(0.3 / 1.5, 5); // pause
+      
+      // 時間の連続性を確認
+      expect(frames[1].time).toBeCloseTo(frames[0].time + frames[0].duration, 5);
+      expect(frames[2].time).toBeCloseTo(frames[1].time + frames[1].duration, 5);
+    });
+
+    it('should handle default speedScale=1.0', () => {
+      const data = createVoiceVoxData([
+        createAccentPhrase([
+          createMora({ text: 'ア', vowel: 'a', vowel_length: 0.1 })
+        ])
+      ]);
+      // speedScaleを設定しない（デフォルト1.0）
+
+      const frames = generator.generateFrames(data);
+      
+      expect(frames).toHaveLength(1);
+      expect(frames[0]).toEqual({ time: 0, duration: 0.1, mouth: 'a' });
+    });
+  });
 });
