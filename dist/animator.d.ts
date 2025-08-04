@@ -17,6 +17,12 @@ export interface ExportOptions {
     fps?: number;
     format?: 'png' | 'jpeg' | 'webp';
     quality?: number;
+    width?: number;
+    height?: number;
+    cropX?: number;
+    cropY?: number;
+    cropWidth?: number;
+    cropHeight?: number;
     onProgress?: (current: number, total: number) => void;
 }
 export declare class AnimationController {

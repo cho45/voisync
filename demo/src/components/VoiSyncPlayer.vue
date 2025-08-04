@@ -236,9 +236,20 @@ const exportVideoFile = async () => {
     );
     
     const controller = new AnimationController(frames, renderer);
+    
+    // キャンバスのサイズを取得してクロップ領域を計算
+    const canvasSize = renderer.getCanvasSize();
+    const cropHeight = Math.floor(canvasSize.height * 0.5); // 上半分をクロップ
+    
     const exportedFrames = await controller.exportFrames(props.baseLayers, {
       fps: 60,
       format: 'png',
+      width: 720,
+      height: 720,
+      cropX: 0,
+      cropY: 0,
+      cropWidth: canvasSize.width,
+      cropHeight: cropHeight,
       onProgress: (current, total) => {
         const frameProgress = 0.25 + (0.45 * current / total);
         emit('exportProgress', frameProgress, `フレーム生成中 (${current}/${total})...`);

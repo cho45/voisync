@@ -141,8 +141,8 @@ export async function exportVideo(options: VideoExportOptions): Promise<Blob> {
       throw new Error('FFmpeg produced an empty output file');
     }
     
-    // Uint8Arrayを直接Blobに渡す
-    const videoBlob = new Blob([data], { type: 'video/mp4' });
+    // Uint8ArrayのバッファをBlobに渡す（型キャスト）
+    const videoBlob = new Blob([data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer], { type: 'video/mp4' });
     console.log('[FFmpeg Debug] Created video blob, size:', videoBlob.size);
 
     // クリーンアップ

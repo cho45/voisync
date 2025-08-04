@@ -191,11 +191,26 @@ export class AnimationController {
         const totalDuration = this.getTotalDuration();
         const frameInterval = 1 / fps;
         const exportedFrames = [];
-        // 一時的なcanvasを作成
-        const canvas = document.createElement('canvas');
-        const size = this.renderer.getCanvasSize();
-        canvas.width = size.width;
-        canvas.height = size.height;
+        // レンダリング用のcanvasを作成
+        const renderCanvas = document.createElement('canvas');
+        const originalSize = this.renderer.getCanvasSize();
+        renderCanvas.width = originalSize.width;
+        renderCanvas.height = originalSize.height;
+        // クロップとリサイズのパラメータを設定
+        const cropX = options?.cropX ?? 0;
+        const cropY = options?.cropY ?? 0;
+        const cropWidth = options?.cropWidth ?? originalSize.width;
+        const cropHeight = options?.cropHeight ?? originalSize.height;
+        const outputWidth = options?.width ?? cropWidth;
+        const outputHeight = options?.height ?? cropHeight;
+        // エクスポート用のcanvasを作成
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = outputWidth;
+        exportCanvas.height = outputHeight;
+        const exportCtx = exportCanvas.getContext('2d');
+        if (!exportCtx) {
+            throw new Error('Failed to get 2D context for export canvas');
+        }
         let processedCount = 0;
         const totalFrames = Math.ceil(totalDuration * fps);
         for (let time = 0; time < totalDuration; time += frameInterval) {
@@ -203,7 +218,7 @@ export class AnimationController {
             if (frameIndex !== -1) {
                 const frame = this.frames[frameIndex];
                 // フレームをレンダリング
-                const result = await this.renderer.renderWithMouthShapes(canvas, baseLayers, [{
+                const result = await this.renderer.renderWithMouthShapes(renderCanvas, baseLayers, [{
                         shape: frame.mouth,
                         alpha: 1.0
                     }]);
@@ -211,9 +226,34 @@ export class AnimationController {
                     console.error('Export frame render errors:', result.errors);
                     continue;
                 }
+                // クロップとリサイズを適用（アスペクト比を維持）
+                exportCtx.clearRect(0, 0, outputWidth, outputHeight);
+                // アスペクト比を計算
+                const sourceAspect = cropWidth / cropHeight;
+                const targetAspect = outputWidth / outputHeight;
+                let drawWidth = outputWidth;
+                let drawHeight = outputHeight;
+                let drawX = 0;
+                let drawY = 0;
+                if (sourceAspect > targetAspect) {
+                    // ソースが横長の場合：幅に合わせる
+                    drawHeight = outputWidth / sourceAspect;
+                    drawY = (outputHeight - drawHeight) / 2;
+                }
+                else {
+                    // ソースが縦長の場合：高さに合わせる
+                    drawWidth = outputHeight * sourceAspect;
+                    drawX = (outputWidth - drawWidth) / 2;
+                }
+                // 背景色を設定（オプション：黒または透明）
+                exportCtx.fillStyle = '#000000';
+                exportCtx.fillRect(0, 0, outputWidth, outputHeight);
+                exportCtx.drawImage(renderCanvas, cropX, cropY, cropWidth, cropHeight, // ソース領域
+                drawX, drawY, drawWidth, drawHeight // 描画先領域（アスペクト比維持）
+                );
                 // Blobに変換
                 const blob = await new Promise((resolve, reject) => {
-                    canvas.toBlob((blob) => {
+                    exportCanvas.toBlob((blob) => {
                         if (blob) {
                             resolve(blob);
                         }
