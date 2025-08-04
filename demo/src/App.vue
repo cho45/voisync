@@ -77,13 +77,29 @@
         <div class="button-group">
           <button
             @click="handlePlay"
-            :disabled="!canPlay || isLoading || isGenerating"
+            :disabled="!canPlay || isLoading || isGenerating || isExporting"
             class="play-button"
           >
             {{ isGenerating ? '生成中...' : (playerRef?.isPlaying ? '停止' : '再生') }}
           </button>
+          <button
+            @click="handleExport"
+            :disabled="!canPlay || isLoading || isGenerating || isExporting || playerRef?.isPlaying"
+            class="export-button"
+          >
+            {{ isExporting ? 'エクスポート中...' : '動画をエクスポート' }}
+          </button>
           <div v-if="isGenerating" class="loading-bar">
             <div class="loading-bar-progress"></div>
+          </div>
+          <div v-if="isExporting" class="export-progress">
+            <div class="export-progress-bar">
+              <div 
+                class="export-progress-fill" 
+                :style="{ width: `${exportProgress * 100}%` }"
+              ></div>
+            </div>
+            <div class="export-progress-text">{{ exportMessage }}</div>
           </div>
         </div>
 
@@ -146,6 +162,7 @@
           @stopped="handleStopped"
           @error="handleError"
           @loading="handleLoading"
+          @export-progress="handleExportProgress"
         />
       </div>
     </main>
@@ -170,6 +187,9 @@ const isInitializing = ref(true);
 const errorMessage = ref('');
 const isGenerating = ref(false);
 const showAdvanced = ref(false);
+const isExporting = ref(false);
+const exportProgress = ref(0);
+const exportMessage = ref('');
 
 // キャラクター選択
 const selectedCharacterId = ref(defaultCharacterId);
@@ -378,6 +398,30 @@ const handleLoading = (loading: boolean) => {
   isGenerating.value = loading;
 };
 
+// エクスポートハンドラー
+const handleExport = async () => {
+  if (!playerRef.value) return;
+  
+  isExporting.value = true;
+  errorMessage.value = '';
+  
+  try {
+    await playerRef.value.exportVideo();
+  } catch (error) {
+    console.error('Export error:', error);
+  } finally {
+    isExporting.value = false;
+    exportProgress.value = 0;
+    exportMessage.value = '';
+  }
+};
+
+// エクスポート進捗ハンドラー
+const handleExportProgress = (progress: number, message: string) => {
+  exportProgress.value = progress;
+  exportMessage.value = message;
+};
+
 // baseLayers と mouthMapping の変更を監視
 watch([baseLayers, mouthMapping, editableBaseLayers, editableMouthMapping, () => showAdvanced.value], () => {
   if (!isInitializing.value) {
@@ -486,26 +530,42 @@ onMounted(async () => {
 
 .button-group {
   margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.play-button {
+.play-button,
+.export-button {
   width: 100%;
   padding: 12px 24px;
   font-size: 16px;
   font-weight: 600;
   color: white;
-  background-color: #4CAF50;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
+.play-button {
+  background-color: #4CAF50;
+}
+
 .play-button:hover:not(:disabled) {
   background-color: #45a049;
 }
 
-.play-button:disabled {
+.export-button {
+  background-color: #2196F3;
+}
+
+.export-button:hover:not(:disabled) {
+  background-color: #1976D2;
+}
+
+.play-button:disabled,
+.export-button:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
 }
@@ -569,6 +629,30 @@ onMounted(async () => {
     width: 60%;
     margin-left: 100%;
   }
+}
+
+.export-progress {
+  margin-top: 10px;
+}
+
+.export-progress-bar {
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.export-progress-fill {
+  height: 100%;
+  background-color: #2196F3;
+  transition: width 0.3s ease;
+}
+
+.export-progress-text {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
 }
 
 .advanced-section {

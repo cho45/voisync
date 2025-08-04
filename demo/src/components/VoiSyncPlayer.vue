@@ -17,6 +17,8 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { createAudioQuery, synthesize } from '@/api/voicevox';
 import { LipSyncGenerator, LayersRenderer, AnimationController } from '@voisync/index';
 import type { LayersData, MouthLayerMapping } from '@voisync/types';
+import { audioBufferToWav, arrayBufferToUint8Array } from '@/utils/audio';
+import { exportVideo, downloadVideo } from '@/utils/ffmpeg';
 
 interface Props {
   text: string;
@@ -35,6 +37,7 @@ const emit = defineEmits<{
   stopped: [];
   error: [error: string];
   loading: [isLoading: boolean];
+  exportProgress: [progress: number, message: string];
 }>();
 
 const canvasRef = ref<HTMLCanvasElement>();
@@ -47,6 +50,7 @@ const canvasHeight = computed(() => props.layersData?.document.height || 1650);
 
 let animationController: AnimationController | null = null;
 let audioContext: AudioContext | null = null;
+
 
 const play = async () => {
   if (!props.text || !props.layersData || !props.imageCache) {
@@ -184,11 +188,95 @@ onUnmounted(() => {
   }
 });
 
+// 動画エクスポート
+const exportVideoFile = async () => {
+  if (!props.text || !props.layersData || !props.imageCache) {
+    error.value = 'テキストまたはリソースが準備できていません';
+    emit('error', error.value);
+    return;
+  }
+
+  try {
+    error.value = '';
+    emit('exportProgress', 0, 'エクスポート準備中...');
+
+    // VOICEVOX APIでクエリ作成
+    emit('exportProgress', 0.05, '音声合成クエリを作成中...');
+    const audioQuery = await createAudioQuery(props.text, props.speakerId);
+    
+    // speedScaleを設定
+    audioQuery.speedScale = props.speedScale;
+
+    // 音声合成
+    emit('exportProgress', 0.1, '音声を合成中...');
+    const audioData = await synthesize(audioQuery, props.speakerId);
+
+    // AudioContextを使用して音声データをデコード
+    const tempAudioContext = new AudioContext();
+    const audioBuffer = await tempAudioContext.decodeAudioData(audioData.slice(0));
+    tempAudioContext.close();
+
+    // 音声データをWAVに変換
+    emit('exportProgress', 0.15, '音声データを処理中...');
+    const wavBuffer = audioBufferToWav(audioBuffer);
+    const wavData = arrayBufferToUint8Array(wavBuffer);
+
+    // リップシンクフレーム生成
+    emit('exportProgress', 0.2, 'リップシンクデータを生成中...');
+    const lipSyncGenerator = new LipSyncGenerator();
+    const frames = lipSyncGenerator.generateFrames(audioQuery);
+
+    // フレームを生成
+    emit('exportProgress', 0.25, 'フレームを生成中...');
+    
+    const renderer = new LayersRenderer(
+      props.layersData,
+      props.imageCache,
+      props.mouthMapping
+    );
+    
+    const controller = new AnimationController(frames, renderer);
+    const exportedFrames = await controller.exportFrames(props.baseLayers, {
+      fps: 60,
+      format: 'png',
+      onProgress: (current, total) => {
+        const frameProgress = 0.25 + (0.45 * current / total);
+        emit('exportProgress', frameProgress, `フレーム生成中 (${current}/${total})...`);
+      }
+    });
+
+    // Blobの配列を作成
+    const frameBlobs = exportedFrames.map(frame => frame.blob);
+
+    // FFmpegで動画生成
+    emit('exportProgress', 0.7, 'MP4を生成中...');
+    const videoBlob = await exportVideo({
+      frames: frameBlobs,
+      audioData: wavData,
+      fps: 60,
+      onProgress: (progress) => {
+        const ffmpegProgress = 0.7 + (0.3 * progress);
+        emit('exportProgress', ffmpegProgress, 'MP4を生成中...');
+      }
+    });
+
+    // ダウンロード
+    emit('exportProgress', 1.0, '完了！');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    downloadVideo(videoBlob, `voisync-${timestamp}.mp4`);
+
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '動画エクスポート中にエラーが発生しました';
+    emit('error', error.value);
+  }
+};
+
 // 公開メソッド
 defineExpose({
   play,
   stop,
-  isPlaying
+  isPlaying,
+  exportVideo: exportVideoFile
 });
 </script>
 
