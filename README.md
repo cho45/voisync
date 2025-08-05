@@ -2,52 +2,61 @@
 
 VOICEVOXの音声合成データを使用してリアルタイムでリップシンクアニメーションを生成するTypeScriptライブラリ。
 
-## 📦 インストール
+https://www.youtube.com/watch?v=IDiLtk5LR7k
 
-TBD
+![Demo]( ./doc/demo.png )
 
 ## 🚀 クイックスタート
 
-```typescript
-import { LipSyncGenerator, LayersRenderer, AnimationController, loadImages } from 'voisync';
+### 1. デモを動かしてみる
 
-// 1. VOICEVOXで音声合成データを取得
-const voiceVoxData = await fetch('http://localhost:50021/audio_query?text=こんにちは&speaker=1', {
-  method: 'POST'
-}).then(res => res.json());
+#### 前提条件
+- Node.js (v16以上)
+- [VOICEVOX](https://voicevox.hiroshiba.jp/)をローカルで起動（デフォルト: http://localhost:50021）
 
-// 2. リップシンクフレームを生成
-const generator = new LipSyncGenerator();
-const frames = generator.generateFrames(voiceVoxData);
+#### デモの実行
+```bash
+# リポジトリをクローン
+git clone https://github.com/cho45/voisync.git
+cd voisync
 
-// 3. レイヤー画像を読み込み
-const layersData = await fetch('./layers.json').then(res => res.json());
-const imagePaths = /* layers.jsonから画像パスを抽出 */;
-const imageCache = await loadImages(imagePaths);
+# 依存関係のインストール
+npm install
+npm run demo:install
 
-// 4. レンダラーを初期化
-const mouthMapping = {
-  'a': '!口/_お',
-  'i': '!口/_んへー',
-  'u': '!口/_ゆ',
-  'e': '!口/_んへー',
-  'o': '!口/_お',
-  'n': '!口/_んー',
-  'closed': '!口/_むー'
-};
-const renderer = new LayersRenderer(layersData, imageCache, mouthMapping);
+# VOICEVOXのAPIスキーマから型定義を生成
+npm run generate:types
 
-// 5. アニメーション再生
-const animator = new AnimationController(frames, renderer);
-const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-const baseLayers = ['体', '顔', '目']; // 基本レイヤー
+# ライブラリをビルド
+npm run build
 
-animator.play(canvas, baseLayers, {
-  audioBuffer: audioBuffer, // Web Audio APIでデコード済みの音声
-  audioContext: audioContext,
-  onEnd: () => console.log('Animation finished')
-});
+# デモサーバーを起動
+npm run demo:dev
 ```
+
+デモは http://localhost:5173 でアクセスできます。
+
+### 2. ずんだもんの素材を追加する
+
+デモでは既にサンプルキャラクターが含まれていますが、ずんだもん素材を使用したい場合は以下の手順で追加できます。
+
+#### 1. 素材のダウンロード
+[ずんだもん立ち絵素材（坂本アヒル様）](https://www.pixiv.net/artworks/92641351)から`ずんだもん立ち絵素材2.3.zip`をダウンロード
+
+#### 2. ZIPファイルの展開
+```bash
+unzip ずんだもん立ち絵素材2.3.zip -d assets/
+```
+
+#### 3. PSDファイルからレイヤーを展開
+```bash
+node expand-psd.js assets/ずんだもん立ち絵素材2.3/ずんだもん立ち絵素材2.3.psd
+```
+
+これで`assets/ずんだもん立ち絵素材2.3/ずんだもん立ち絵素材2.3.psd.expanded/`に各レイヤーのPNG画像と`layers.json`が生成されます。
+
+#### 4. デモで新しい素材を使用
+`characters.ts` に定義済みなのでデモではそのまま生成した layers.json を使えます。
 
 ## 📖 APIリファレンス
 
@@ -381,10 +390,6 @@ npm run demo:dev
 - [ずんだもん立ち絵素材（坂本アヒル様）](https://www.pixiv.net/artworks/92641351)
 - [VOICEVOX API ドキュメント](https://voicevox.github.io/voicevox_engine/api/)
 
-## 🤝 コントリビューション
-
-プルリクエストや Issue の作成を歓迎します。大きな変更を行う場合は、まず Issue を作成して変更内容について議論してください。
-
 ## 📄 ライセンス
 
-MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してください。
+MIT
