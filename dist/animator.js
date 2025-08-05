@@ -245,8 +245,7 @@ export class AnimationController {
                     drawWidth = outputHeight * sourceAspect;
                     drawX = (outputWidth - drawWidth) / 2;
                 }
-                // 背景色を設定（オプション：黒または透明）
-                exportCtx.fillStyle = '#000000';
+                exportCtx.fillStyle = '#ffffff';
                 exportCtx.fillRect(0, 0, outputWidth, outputHeight);
                 exportCtx.drawImage(renderCanvas, cropX, cropY, cropWidth, cropHeight, // ソース領域
                 drawX, drawY, drawWidth, drawHeight // 描画先領域（アスペクト比維持）

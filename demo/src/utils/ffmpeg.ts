@@ -1,5 +1,5 @@
-import { FFmpeg } from '../../node_modules/@ffmpeg/ffmpeg/dist/esm/index.js';
-import { toBlobURL } from '../../node_modules/@ffmpeg/util/dist/esm/index.js';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { toBlobURL } from '@ffmpeg/util';
 
 let ffmpegInstance: FFmpeg | null = null;
 

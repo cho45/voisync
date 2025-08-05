@@ -5,7 +5,7 @@ export const characters: Record<string, CharacterConfig> = {
   sample: {
     id: 'sample',
     name: 'VoiSync Sample',
-    layersPath: '/voisync-sample.psd.expanded/layers.json',
+    layersPath: './voisync-sample.psd.expanded/layers.json',
     baseLayers: [
       '!口/*ん',
       'ベース',
@@ -23,7 +23,7 @@ export const characters: Record<string, CharacterConfig> = {
   zundamon: {
     id: 'zundamon',
     name: 'ずんだもん',
-    layersPath: '/ずんだもん立ち絵素材2.3/ずんだもん立ち絵素材2.3.psd.expanded/layers.json',
+    layersPath: './ずんだもん立ち絵素材2.3/ずんだもん立ち絵素材2.3.psd.expanded/layers.json',
     baseLayers: [
       '!枝豆/*枝豆通常',
       '!眉/*普通眉',
@@ -49,7 +49,7 @@ export const characters: Record<string, CharacterConfig> = {
   shikokumetan: {
     id: 'shikokumetan',
     name: '四国めたん',
-    layersPath: '/四国めたん立ち絵素材2.1/四国めたん立ち絵素材2.1.psd.expanded/layers.json',
+    layersPath: './四国めたん立ち絵素材2.1/四国めたん立ち絵素材2.1.psd.expanded/layers.json',
     baseLayers: [
       "!前髪もみあげ",
       "頭部アクセサリ/ヘッドドレス",

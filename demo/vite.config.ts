@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 
 export default defineConfig({
+  base: './',
   plugins: [vue()],
   resolve: {
     alias: {
@@ -19,6 +20,7 @@ export default defineConfig({
   },
   publicDir: resolve(__dirname, '../assets'),
   optimizeDeps: {
-    include: ['vue', 'openapi-fetch']
+    include: ['vue', 'openapi-fetch'],
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util']
   }
 });
