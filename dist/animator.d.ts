@@ -5,6 +5,7 @@ export interface AnimationOptions {
     transitionDuration?: number;
     audioContext?: AudioContext;
     audioBuffer?: AudioBuffer;
+    creditText?: string;
     onFrame?: (frameIndex: number, time: number) => void;
     onEnd?: () => void;
 }
@@ -23,6 +24,7 @@ export interface ExportOptions {
     cropY?: number;
     cropWidth?: number;
     cropHeight?: number;
+    creditText?: string;
     onProgress?: (current: number, total: number) => void;
 }
 export declare class AnimationController {
@@ -44,6 +46,10 @@ export declare class AnimationController {
      * @returns イージング後の値（0から1）
      */
     private easeInOut;
+    /**
+     * クレジットテキストを描画
+     */
+    private drawCreditText;
     /**
      * アニメーションを再生
      */

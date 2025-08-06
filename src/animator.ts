@@ -6,6 +6,7 @@ export interface AnimationOptions {
   transitionDuration?: number;  // 口形状遷移時間（ミリ秒）デフォルト: 80
   audioContext?: AudioContext;
   audioBuffer?: AudioBuffer;
+  creditText?: string;  // クレジットテキスト（例: "VOICEVOX: ずんだもん"）
   onFrame?: (frameIndex: number, time: number) => void;
   onEnd?: () => void;
 }
@@ -26,6 +27,7 @@ export interface ExportOptions {
   cropY?: number;       // クロップ開始Y座標（デフォルト: 0）
   cropWidth?: number;   // クロップ幅（デフォルト: 元の幅）
   cropHeight?: number;  // クロップ高さ（デフォルト: 元の高さ）
+  creditText?: string;  // クレジットテキスト（例: "VOICEVOX: ずんだもん"）
   onProgress?: (current: number, total: number) => void;
 }
 
@@ -73,6 +75,31 @@ export class AnimationController {
     return t < 0.5 
       ? 2 * t * t 
       : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+
+  /**
+   * クレジットテキストを描画
+   */
+  private drawCreditText(canvas: HTMLCanvasElement, creditText: string): void {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const padding = 10;
+    const fontSize = 12;
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    
+    // テキストの背景を描画
+    const textHeight = fontSize * 1.2;
+    
+    // 白色でテキストを描画
+    ctx.fillStyle = '#666666';
+    ctx.fillText(
+      creditText,
+      canvas.width - padding,
+      padding + (textHeight - fontSize) / 2
+    );
   }
 
   /**
@@ -170,7 +197,12 @@ export class AnimationController {
           this.renderer.renderWithMouthShapes(canvas, baseLayers, [{
             shape: this.currentTransition.toMouth,
             alpha: 1.0
-          }]).catch(error => {
+          }]).then(() => {
+            // クレジットテキストを描画
+            if (options?.creditText) {
+              this.drawCreditText(canvas, options.creditText);
+            }
+          }).catch(error => {
             console.error('Render error:', error);
           });
           this.currentTransition = null;
@@ -186,7 +218,12 @@ export class AnimationController {
               shape: this.currentTransition.toMouth,
               alpha: easedProgress
             }
-          ]).catch(error => {
+          ]).then(() => {
+            // クレジットテキストを描画
+            if (options?.creditText) {
+              this.drawCreditText(canvas, options.creditText);
+            }
+          }).catch(error => {
             console.error('Render error:', error);
           });
         }
@@ -197,7 +234,12 @@ export class AnimationController {
           this.renderer.renderWithMouthShapes(canvas, baseLayers, [{
             shape: currentFrame.mouth,
             alpha: 1.0
-          }]).catch(error => {
+          }]).then(() => {
+            // クレジットテキストを描画
+            if (options?.creditText) {
+              this.drawCreditText(canvas, options.creditText);
+            }
+          }).catch(error => {
             console.error('Render error:', error);
           });
         }
@@ -328,6 +370,26 @@ export class AnimationController {
           cropX, cropY, cropWidth, cropHeight,  // ソース領域
           drawX, drawY, drawWidth, drawHeight    // 描画先領域（アスペクト比維持）
         );
+        
+        // クレジットテキストを描画
+        if (options?.creditText) {
+          const padding = 10;
+          const fontSize = 12;
+          exportCtx.font = `${fontSize}px sans-serif`;
+          exportCtx.textAlign = 'right';
+          exportCtx.textBaseline = 'top';
+          
+          // テキストの背景を描画
+          const textHeight = fontSize * 1.2;
+          
+          // 白色でテキストを描画
+          exportCtx.fillStyle = '#666666';
+          exportCtx.fillText(
+            options.creditText,
+            outputWidth - padding,
+            padding + (textHeight - fontSize) / 2
+          );
+        }
         
         // Blobに変換
         const blob = await new Promise<Blob>((resolve, reject) => {

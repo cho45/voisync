@@ -153,6 +153,7 @@
           ref="playerRef"
           :text="text"
           :speaker-id="selectedSpeakerId"
+          :speaker-name="selectedSpeakerName"
           :speed-scale="speedScale"
           :layers-data="layersData"
           :image-cache="imageCache"
@@ -195,6 +196,14 @@ const exportMessage = ref('');
 const selectedCharacterId = ref(defaultCharacterId);
 const characterList = getCharacterList();
 const selectedCharacter = computed(() => getCharacterConfig(selectedCharacterId.value));
+
+// 現在選択されているスピーカー名を取得
+const selectedSpeakerName = computed(() => {
+  const speaker = speakers.value.find(s => 
+    s.styles.some(style => style.id === selectedSpeakerId.value)
+  );
+  return speaker ? speaker.name : '';
+});
 
 // プレイヤー参照
 const playerRef = ref<InstanceType<typeof VoiSyncPlayer>>();

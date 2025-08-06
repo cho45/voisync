@@ -23,6 +23,7 @@ import { exportVideo, downloadVideo } from '@/utils/ffmpeg';
 interface Props {
   text: string;
   speakerId: number;
+  speakerName?: string;
   speedScale: number;
   layersData: LayersData | null;
   imageCache: Map<string, HTMLImageElement | ImageBitmap> | null;
@@ -106,6 +107,7 @@ const play = async () => {
       animationController.play(canvasRef.value, props.baseLayers, {
         audioContext,
         audioBuffer,
+        creditText: props.speakerName ? `VOICEVOX: ${props.speakerName}` : 'VOICEVOX',
         onEnd: () => {
           isPlaying.value = false;
           emit('stopped');
@@ -239,7 +241,10 @@ const exportVideoFile = async () => {
     
     // キャンバスのサイズを取得してクロップ領域を計算
     const canvasSize = renderer.getCanvasSize();
-    const cropHeight = Math.floor(canvasSize.height * 0.5); // 上半分をクロップ
+    // 正方形にクロップ（アスペクト比1:1）
+    const cropSize = Math.min(canvasSize.width, canvasSize.height);
+    const cropWidth = cropSize;
+    const cropHeight = cropSize;
     
     const exportedFrames = await controller.exportFrames(props.baseLayers, {
       fps: 60,
@@ -248,8 +253,9 @@ const exportVideoFile = async () => {
       height: 720,
       cropX: 0,
       cropY: 0,
-      cropWidth: canvasSize.width,
+      cropWidth: cropWidth,
       cropHeight: cropHeight,
+      creditText: props.speakerName ? `VOICEVOX: ${props.speakerName}` : 'VOICEVOX',
       onProgress: (current, total) => {
         const frameProgress = 0.25 + (0.45 * current / total);
         emit('exportProgress', frameProgress, `フレーム生成中 (${current}/${total})...`);

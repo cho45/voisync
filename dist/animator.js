@@ -31,6 +31,24 @@ export class AnimationController {
             : 1 - Math.pow(-2 * t + 2, 2) / 2;
     }
     /**
+     * クレジットテキストを描画
+     */
+    drawCreditText(canvas, creditText) {
+        const ctx = canvas.getContext('2d');
+        if (!ctx)
+            return;
+        const padding = 10;
+        const fontSize = 12;
+        ctx.font = `${fontSize}px sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        // テキストの背景を描画
+        const textHeight = fontSize * 1.2;
+        // 白色でテキストを描画
+        ctx.fillStyle = '#666666';
+        ctx.fillText(creditText, canvas.width - padding, padding + (textHeight - fontSize) / 2);
+    }
+    /**
      * アニメーションを再生
      */
     play(canvas, baseLayers, options) {
@@ -111,7 +129,12 @@ export class AnimationController {
                     this.renderer.renderWithMouthShapes(canvas, baseLayers, [{
                             shape: this.currentTransition.toMouth,
                             alpha: 1.0
-                        }]).catch(error => {
+                        }]).then(() => {
+                        // クレジットテキストを描画
+                        if (options?.creditText) {
+                            this.drawCreditText(canvas, options.creditText);
+                        }
+                    }).catch(error => {
                         console.error('Render error:', error);
                     });
                     this.currentTransition = null;
@@ -128,7 +151,12 @@ export class AnimationController {
                             shape: this.currentTransition.toMouth,
                             alpha: easedProgress
                         }
-                    ]).catch(error => {
+                    ]).then(() => {
+                        // クレジットテキストを描画
+                        if (options?.creditText) {
+                            this.drawCreditText(canvas, options.creditText);
+                        }
+                    }).catch(error => {
                         console.error('Render error:', error);
                     });
                 }
@@ -140,7 +168,12 @@ export class AnimationController {
                     this.renderer.renderWithMouthShapes(canvas, baseLayers, [{
                             shape: currentFrame.mouth,
                             alpha: 1.0
-                        }]).catch(error => {
+                        }]).then(() => {
+                        // クレジットテキストを描画
+                        if (options?.creditText) {
+                            this.drawCreditText(canvas, options.creditText);
+                        }
+                    }).catch(error => {
                         console.error('Render error:', error);
                     });
                 }
@@ -250,6 +283,19 @@ export class AnimationController {
                 exportCtx.drawImage(renderCanvas, cropX, cropY, cropWidth, cropHeight, // ソース領域
                 drawX, drawY, drawWidth, drawHeight // 描画先領域（アスペクト比維持）
                 );
+                // クレジットテキストを描画
+                if (options?.creditText) {
+                    const padding = 10;
+                    const fontSize = 12;
+                    exportCtx.font = `${fontSize}px sans-serif`;
+                    exportCtx.textAlign = 'right';
+                    exportCtx.textBaseline = 'top';
+                    // テキストの背景を描画
+                    const textHeight = fontSize * 1.2;
+                    // 白色でテキストを描画
+                    exportCtx.fillStyle = '#666666';
+                    exportCtx.fillText(options.creditText, outputWidth - padding, padding + (textHeight - fontSize) / 2);
+                }
                 // Blobに変換
                 const blob = await new Promise((resolve, reject) => {
                     exportCanvas.toBlob((blob) => {
